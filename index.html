@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>test</title>
+    </head>
+    <body>
+        <script>
+            const Http = new XMLHttpRequest();
+            const url = "http://0.0.0.0:8000/http%3A%2F%2Fcnerdprogramming.tech";
+
+            Http.open("GET", url);
+            Http.send();
+
+            Http.onreadystatechange = (e) => {
+                console.log(Http.responseText)
+            }
+        </script>
+    </body>
+</html>
