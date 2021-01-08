@@ -43,5 +43,5 @@ when isMainModule:
       request.sendHeaders(Http200, head)
       resp info
 
-    get "/error/":
-      halt "invalid url"
+    error Http404:
+      resp "invalid url"
