@@ -38,10 +38,8 @@ when isMainModule:
     get "/@url":
       var client = newHttpClient()
       var info = client.getContent((@"url").refineurl)
-      var head : RawHeaders
-      head.add(("Access-Control-Allow-Origin", "*"))
-      request.sendHeaders(Http200, head)
-      resp info
+      var header = {"Access-Control-Allow-Origin" : "*"}
+      resp Http200, header, info
 
     error Http404:
       resp "invalid url"
