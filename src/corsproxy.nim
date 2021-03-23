@@ -6,7 +6,7 @@ from httpclient import newHttpClient, getContent
 proc getsettings() : tuple[port : int, address : string] =
 
   try:
-    var info = parseFile("settings.json")
+    var info = parseFile("public/settings.json")
     var jinfo = info.getFields
 
     result.port = jinfo["port"].getInt
