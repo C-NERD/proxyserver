@@ -35,10 +35,19 @@ when isMainModule:
 
   routes:
 
-    get "/@url":
-      var client = newHttpClient()
-      var info = client.getContent((@"url").refineurl)
-      var header = {"Access-Control-Allow-Origin" : "*"}
+    get "/proxy/@url":
+      ## This block serves as a proxy to by-pass CORS restrictions
+      let client = newHttpClient()
+      let info = client.getContent((@"url").refineurl)
+      let header = {"Access-Control-Allow-Origin" : "*"}
+      resp Http200, header, info
+
+    get "/file/@url":
+      ## This block serves files on the local machine while bypassing
+      ## CORS restrictions.
+      ## I mostly use this one for testing frontend code
+      let info = readFile((@"url").refineurl)
+      let header = {"Access-Control-Allow-Origin" : "*"}
       resp Http200, header, info
 
     error Http404:
