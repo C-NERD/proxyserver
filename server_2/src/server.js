@@ -169,36 +169,24 @@ function createSchema() {
             db.run('INSERT INTO admin values(?, ?)', ['1', '']);
         })
         console.log('newdatabase created');
+	db.close()
     });
 }
 
-function authenticate(db, password) {
-    let adminpassword = db.get("SELECT password FROM admin where id = 1");
+const md5 = require('md5');
 
-    if (adminpassword == btoa(password)) {
+function updatePassword(password) {
+	var password = md5(password);
+	let db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => {
+        	if (err) {
 
-        return true;
-    }else if (adminpassword == '') {
+          		console.error(err.message);
+          		exit(0);
+        	}
 
-        return false;
-    }else{
-
-        return false;
-    }
-}
-
-function updatePassword(db, password) {
-    var password = btoa(password);
-    console.log('UPDATE admin SET password = \'' + password + '\' where id = 1;')
-
-    try{
-        db.run('UPDATE admin SET password = ? where id = 1;', [password])
-
-        return true
-    }catch{
-
-        return false
-    }
+        	db.run('UPDATE admin SET password = ? where id = 1;', [password])
+		db.close()
+	})
 }
 
 function getFormData(data) {
@@ -239,57 +227,13 @@ const args = process.argv.slice(2);
 const hostname = '0.0.0.0';
 const port = 5000;
 
-const server = http.createServer((req, res) => {
 
-    console.log(req.method + " request at url " + req.url);
-    res.setHeader('Content-Type', 'text/html')
-    if (req.method.toUpperCase() === 'GET' && req.url === '/') {
-
-        res.statusCode = 200
-        res.end(html)
-
-    }if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
-
-        var body = '';
-        req.on('data', function (data) {
-
-            body += data;
-            if (body.length > 1e6) { 
-
-                req.socket.destroy();
-            }
-        });
-        req.on('end', function () {
-            let formdata = getFormData(body);
-
-            for (var i = 0; i < formdata.length; i++) {
-                if (formdata[i].key = 'password') {
-                    console.log(formdata[i].value)
-                }
-            }
-        });
-
-        //console.log(req.body)
-        res.end("Ok")
-    }else {
-
-        res.statusCode = 404
-
-        try{
-
-            res.setHeader('Content-Type', 'text/html')
-            res.end('Not Found')
-        }catch{
-
-        }
-    }
-})
 
 if (args.length != 0) {
 
     switch (args[0].toLowerCase()) {
         case 'newdatabase':
-
+        
             try{
                 createSchema();
                 console.log('newdatabase created');
@@ -302,13 +246,7 @@ if (args.length != 0) {
         case "-p":
             if (args.length > 1) {
 
-                if (updatePassword(db, args[1])) {
-
-                    console.log("password changed successfully");
-                }else{
-
-                    console.log("unable to change password");
-                }
+                updatePassword(args[1])
             }else{
 
                 console.log('password is empty');
@@ -324,8 +262,102 @@ if (args.length != 0) {
     }
     //exit(0);
 }else{
+	let db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => {
+        	if (err) {
 
-    server.listen(port, hostname, () => {
-        console.log(`Server running at http://${hostname}:${port}/`);
-    });
+        		console.error(err.message);
+        		exit(0);
+        	}
+		console.log('database openned');
+		const server = http.createServer((req, res) => {
+
+    			console.log(req.method + " request at url " + req.url);
+    			res.setHeader('Content-Type', 'text/html')
+    			if (req.method.toUpperCase() === 'GET' && req.url === '/') {
+
+        			res.statusCode = 200
+        			res.end(html)
+
+    			}else if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
+
+        			var body = '';
+        			req.on('data', function (data) {
+
+            				body += data;
+            				if (body.length > 1e6) { 
+
+                				req.socket.destroy();
+            				}
+        			});
+        			req.on('end', function () {
+            				let formdata = getFormData(body);
+
+            				for (var p = 0; p < formdata.length; p++) {
+					
+                				if (formdata[p].key === 'password') {
+							let password = formdata[p].value	
+
+							db.serialize(()=>{
+								db.get("SELECT password FROM admin where id = 1", function(err, row) {
+
+									if(err) {
+
+										res.end('an error occured');
+									}else if (row.password == md5(password)) {
+
+										try {
+											res.writeHead(200, {
+          'Content-Type': 'text/plain',
+          'Content-Disposition': 'attachment; filename=google_email.csv'
+        });
+											res.end('name, email, time');
+										}catch {
+
+										}
+									}else {
+										res.end('unautorized')
+									}
+								});
+							});
+                				}
+            				}
+					res.end('problem occured')
+        			});
+
+        			//console.log(req.body)
+        			//res.end("Ok")
+    			}else if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
+
+				var body = '';
+                                req.on('data', function (data) {
+
+                                        body += data;
+                                        if (body.length > 1e6) {                                                                                                                                                                                            req.socket.destroy();
+                                        }
+                                });
+				req.on('end', function () {
+					let formdata = getFormData(body);      
+
+					for (var p = 0; p < formdata.length; p++) {
+
+					}
+				});
+			}else {
+
+        			res.statusCode = 404
+
+        			try{
+
+            				res.setHeader('Content-Type', 'text/html')
+            				res.end('Not Found')
+        			}catch{
+
+        			}
+        		}
+		});
+        	
+        	server.listen(port, hostname, () => {
+      	 		console.log(`Server running at http://${hostname}:${port}/`);
+    		});
+	});
 }
