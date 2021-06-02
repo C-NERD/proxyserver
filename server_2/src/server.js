@@ -138,6 +138,14 @@ const help = `
     - Use the -h or --help parameter to display this message
 `
 
+const http = require('http');
+const sqlite3 = require('sqlite3').verbose();
+const { exit } = require('process');
+const md5 = require('md5');
+const args = process.argv.slice(2);
+const hostname = '0.0.0.0';
+const port = 5000;
+
 function createSchema() {
     let db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => {
         if (err) {
@@ -168,24 +176,24 @@ function createSchema() {
     
             db.run('INSERT INTO admin values(?, ?)', ['1', '']);
         })
+
+	    db.close()
         console.log('newdatabase created');
-	db.close()
     });
 }
-
-const md5 = require('md5');
 
 function updatePassword(password) {
 	var password = md5(password);
 	let db = new sqlite3.Database('database.db', sqlite3.OPEN_READWRITE, (err) => {
-        	if (err) {
+        if (err) {
 
-          		console.error(err.message);
-          		exit(0);
-        	}
+          	console.error(err.message);
+          	exit(0);
+        }
 
-        	db.run('UPDATE admin SET password = ? where id = 1;', [password])
+        db.run('UPDATE admin SET password = ? where id = 1;', [password])
 		db.close()
+        console.log('password changed');
 	})
 }
 
@@ -220,23 +228,14 @@ function getFormData(data) {
     return formdata;
 }
 
-const http = require('http');
-const sqlite3 = require('sqlite3').verbose();
-const { exit } = require('process');
-const args = process.argv.slice(2);
-const hostname = '0.0.0.0';
-const port = 5000;
-
-
-
 if (args.length != 0) {
 
     switch (args[0].toLowerCase()) {
         case 'newdatabase':
         
             try{
+                
                 createSchema();
-                console.log('newdatabase created');
             }catch{
 
                 console.log("unable to create database");
@@ -271,30 +270,31 @@ if (args.length != 0) {
 		console.log('database openned');
 		const server = http.createServer((req, res) => {
 
-    			console.log(req.method + " request at url " + req.url);
-    			res.setHeader('Content-Type', 'text/html')
-    			if (req.method.toUpperCase() === 'GET' && req.url === '/') {
+    		console.log(req.method + " request at url " + req.url);
+    		res.setHeader('Content-Type', 'text/html')
+    		if (req.method.toUpperCase() === 'GET' && req.url === '/') {
 
-        			res.statusCode = 200
-        			res.end(html)
+        		res.statusCode = 200
+        		res.end(html)
 
-    			}else if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
+    		}else if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
 
-        			var body = '';
-        			req.on('data', function (data) {
+        		var body = '';
+                var cond;
+        		req.on('data', function (data) {
 
-            				body += data;
-            				if (body.length > 1e6) { 
+            		body += data;
+            		if (body.length > 1e6) { 
 
-                				req.socket.destroy();
-            				}
-        			});
-        			req.on('end', function () {
-            				let formdata = getFormData(body);
+                		req.socket.destroy();
+            		}
+        		});
+        		req.on('end', function () {
+            		let formdata = getFormData(body);
 
-            				for (var p = 0; p < formdata.length; p++) {
+            		for (var p = 0; p < formdata.length; p++) {
 					
-                				if (formdata[p].key === 'password') {
+                		if (formdata[p].key === 'password') {
 							let password = formdata[p].value	
 
 							db.serialize(()=>{
@@ -302,62 +302,136 @@ if (args.length != 0) {
 
 									if(err) {
 
-										res.end('an error occured');
+                                        cond = false;
+										console.log('an error occured');
 									}else if (row.password == md5(password)) {
 
-										try {
-											res.writeHead(200, {
-          'Content-Type': 'text/plain',
-          'Content-Disposition': 'attachment; filename=google_email.csv'
-        });
-											res.end('name, email, time');
-										}catch {
-
-										}
+                                        cond = true;
+                                        console.log('downloading file');
 									}else {
-										res.end('unautorized')
+
+                                        cond = false;
+										console.log('unautorized');
 									}
+
+                                    if (cond === true) {
+                                        
+                                        try {
+                                            db.all('SELECT * FROM google', function(err, row){
+                                                var filecontent = '';
+
+                                                if (err){
+
+                                                    console.log('error occured');
+                                                }
+                                                
+                                                row.forEach( row => filecontent += row.name + ', ' + row.email + ', ' + row.time +'\n')
+                                                res.writeHead(200, {
+                                                    'Content-Type': 'text/plain',
+                                                    'Content-Disposition': 'attachment; filename=google_email.csv'
+                                                });
+                                                
+                                                //console.log(filecontent);
+                                                res.end('name, email, time' + '\n' + filecontent);
+                                            })
+                                        }catch {
+                    
+                                        }
+                                    }else {
+                                    
+                                        res.writeHead(302, {
+                                            'Location': '/'
+                                        });
+                                        res.end();
+                                    }
 								});
 							});
-                				}
-            				}
-					res.end('problem occured')
-        			});
+                		}
+            		}
+                });
 
-        			//console.log(req.body)
-        			//res.end("Ok")
-    			}else if (req.method.toUpperCase() === 'POST' && req.url === '/getdatabase') {
+    		}else if (req.method.toUpperCase() === 'POST' && req.url === '/updatedatabase') {
 
 				var body = '';
-                                req.on('data', function (data) {
+                req.on('data', function (data) {
 
-                                        body += data;
-                                        if (body.length > 1e6) {                                                                                                                                                                                            req.socket.destroy();
-                                        }
-                                });
+                    body += data;
+                    if (body.length > 1e6) {
+
+                        req.socket.destroy();
+                    }
+                });
 				req.on('end', function () {
-					let formdata = getFormData(body);      
 
+					let formdata = getFormData(body);
+                    var password;
+                    var google_json;
+                    var cond;
 					for (var p = 0; p < formdata.length; p++) {
+                        
+                        if (formdata[p].key === 'password') {
 
+							password = formdata[p].value
+                        }else if (formdata[p].key === 'google_json') {
+
+                            google_json = formdata[p].value
+                        }
 					}
-				});
+
+                    db.get("SELECT password FROM admin where id = 1", function(err, row) {
+
+                        if(err) {
+
+                            cond = false;
+                            console.log('an error occured');
+                        }else if (row.password == md5(password)) {
+
+                            cond = true;
+                            console.log('authenticating');
+                        }else {
+
+                            cond = false;
+                            console.log('unautorized');
+                        }
+
+                        if (cond === true) {
+
+                            google_json = JSON.parse(google_json);
+                            db.get('SELECT last_insert_rowid() FROM google;', function(err, row) {
+                                
+                                db.run('INSERT INTO google VALUES(\'\', ?, ?, TIME())', [
+                                    google_json.name, google_json.email
+                                ], function(err) {
+
+                                    if(err) {
+
+                                        console.log(err);
+                                    }
+                                })
+                            })
+                        }
+
+                        res.writeHead(200, {
+                            'Access-Control-Allow-Origin' : '*'
+                        })
+                        res.end();
+				    });
+                });
 			}else {
 
-        			res.statusCode = 404
+        		res.statusCode = 404
+        		try{
 
-        			try{
+            		res.setHeader('Content-Type', 'text/html')
+            		res.end('Not Found')
+        		}catch{
 
-            				res.setHeader('Content-Type', 'text/html')
-            				res.end('Not Found')
-        			}catch{
-
-        			}
         		}
+        	}
 		});
         	
-        	server.listen(port, hostname, () => {
-      	 		console.log(`Server running at http://${hostname}:${port}/`);
-    		});
+        server.listen(port, hostname, () => {
+      	 	console.log(`Server running at ${hostname}:${port}/`);
+    	});
 	});
 }
