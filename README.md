@@ -14,4 +14,4 @@ Your standalone proxy server should now be created in a new bin directory along 
 
 
 *To make a request to a server via the proxy server your url to the proxy server should look like `https://proxyserversurl/https%3A%2F%2Fwhateversiteyouwanttorequestfrom.com`*
-such that the `:` character in the url you want to request from is replaced with `%3A` and the `/` character with `%2F`
+such that the `:` character in the url you want to request from is replaced with `%3A` and the `/` character with `%2F`. This can be acheived with the javascript `encodeURI` function.
