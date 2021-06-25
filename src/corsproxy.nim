@@ -37,6 +37,7 @@ when isMainModule:
 
     get "/proxy/@url":
       ## This block serves as a proxy to by-pass CORS restrictions
+
       let client = newHttpClient()
       let info = client.getContent((@"url").refineurl)
       let header = {"Access-Control-Allow-Origin": "*"}
@@ -47,7 +48,6 @@ when isMainModule:
       ## CORS restrictions.
       ## I mostly use this one for testing frontend code
       
-      ## echo @"url".refineurl
       let info = readFile((@"url").refineurl)
       let header = {"Access-Control-Allow-Origin": "*"}
       resp Http200, header, info

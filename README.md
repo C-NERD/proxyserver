@@ -6,7 +6,7 @@ To compile the code to this project make sure you have the [nim compiler](https:
 dependencies installed on your local machine.
 
 - Then open a terminal in the root directory of the project
-- Finally type `nimble standalone` in the terminal and then wait until compilation is over
+- Finally type `nimble release` in the terminal and then wait until compilation is over
 
 
 Your standalone proxy server should now be created in a new bin directory along side a settings.json file. If you decide to use the program in a production enviroment you might want to setup a [reverse proxy](https://www.nginx.com/resources/glossary/reverse-proxy-server/) using [nginx](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/) or [apache](http://httpd.apache.org/docs/current/install.html)
